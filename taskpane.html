@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Publication Timeline</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" onerror="window._officeNotAvailable=true"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    :root {
+      --bg: #08101c;
+      --bg2: #0c1528;
+      --surface: rgba(255,255,255,0.025);
+      --surface2: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.055);
+      --border2: rgba(255,255,255,0.09);
+      --text: #e2e8f0;
+      --text2: #cbd5e1;
+      --muted: #64748b;
+      --dim: #94a3b8;
+      --teal: #2dd4bf;
+      --teal-glow: rgba(45,212,191,0.15);
+      --blue: #60a5fa;
+      --purple: #a78bfa;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --pink: #f472b6;
+      --red: #f87171;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow-x: hidden; }
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px; line-height: 1.45;
+    }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+    button { font-family: inherit; cursor: pointer; }
+
+    /* ─── Loading / Connection ─── */
+    .connection-bar {
+      padding: 6px 16px; font-size: 9px; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.3px;
+    }
+    .conn-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+    }
+    .conn-dot.live { background: var(--green); box-shadow: 0 0 6px rgba(52,211,153,0.5); }
+    .conn-dot.offline { background: var(--amber); }
+    .conn-dot.error { background: var(--red); }
+
+    /* ─── Header ─── */
+    .header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%);
+    }
+    .header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .header-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: linear-gradient(135deg, #14b8a6, #3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: var(--bg);
+      flex-shrink: 0;
+    }
+    .header-title { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+    .header-sub { font-size: 9px; color: var(--muted); margin-top: 1px; }
+    .header-right { margin-left: auto; text-align: right; }
+    .header-date {
+      font-size: 9px; color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .header-refresh {
+      margin-top: 3px; font-size: 9px; color: var(--teal);
+      background: none; border: none; padding: 0;
+      opacity: 0.7; transition: opacity 0.2s;
+    }
+    .header-refresh:hover { opacity: 1; }
+
+    /* ─── Manuscript Tabs ─── */
+    .tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--border);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      padding: 10px 14px; font-size: 10px; font-weight: 600;
+      color: var(--muted); cursor: pointer; white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s; flex-shrink: 0; position: relative;
+      background: none; border-top: none; border-left: none; border-right: none;
+    }
+    .tab:hover { color: var(--dim); background: rgba(255,255,255,0.015); }
+    .tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+    .tab-badge {
+      position: absolute; top: 5px; right: 6px;
+      font-size: 7px; font-weight: 700; color: var(--bg);
+      background: var(--teal); border-radius: 8px;
+      padding: 1px 4px; line-height: 1.2;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── Stats row ─── */
+    .stats {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+    }
+    .stat {
+      text-align: center; padding: 8px 4px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .stat-val {
+      font-size: 17px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-lbl { font-size: 7.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 1px; }
+
+    /* ─── Filter chips ─── */
+    .filters {
+      padding: 8px 16px; display: flex; gap: 4px; flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+    }
+    .chip {
+      padding: 3px 9px; font-size: 9px; font-weight: 600;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--dim);
+      transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--border2); }
+    .chip.on { border-color: rgba(45,212,191,0.35); background: var(--teal-glow); color: var(--teal); }
+
+    /* ─── Timeline content ─── */
+    .timeline { padding: 10px 16px 24px; }
+
+    /* Phase */
+    .phase { margin-bottom: 14px; }
+    .phase-head {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 5px; padding: 3px 0;
+    }
+    .phase-pip { width: 3px; height: 13px; border-radius: 2px; }
+    .phase-label {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+    .phase-stat {
+      margin-left: auto; font-size: 8px; color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── Activity Row ─── */
+    .act {
+      border: 1px solid transparent;
+      border-radius: 8px; padding: 8px 10px;
+      margin-bottom: 3px; transition: all 0.15s;
+      cursor: pointer; position: relative;
+    }
+    .act:hover { background: var(--surface2); border-color: var(--border); }
+    .act.expanded { background: var(--surface2); border-color: var(--border2); }
+
+    .act-top { display: flex; align-items: center; gap: 7px; }
+    .act-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    .act-name {
+      flex: 1; font-size: 11px; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .act-name.done { color: var(--muted); text-decoration: line-through; opacity: 0.55; }
+    .act-pct {
+      font-size: 9px; font-weight: 600; width: 30px; text-align: right;
+      font-family: 'JetBrains Mono', monospace; flex-shrink: 0;
+    }
+
+    /* Mini progress bar */
+    .act-bar-wrap { margin-top: 4px; display: flex; align-items: center; gap: 0; }
+    .act-bar {
+      flex: 1; height: 3px; border-radius: 2px;
+      background: rgba(255,255,255,0.04); overflow: hidden;
+    }
+    .act-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+    /* Meta line */
+    .act-meta {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 4px; font-size: 9px; color: var(--muted);
+    }
+    .act-meta-tag {
+      display: inline-flex; align-items: center; gap: 3px;
+    }
+
+    /* ─── Expanded Panel ─── */
+    .panel { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .act.expanded .panel { display: block; }
+
+    /* Gantt bar inside panel */
+    .gantt {
+      position: relative; height: 18px; width: 100%;
+      background: rgba(255,255,255,0.02); border-radius: 4px;
+      margin-bottom: 10px; overflow: visible;
+    }
+    .gantt-track {
+      position: absolute; height: 100%; border-radius: 4px;
+      overflow: hidden;
+    }
+    .gantt-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+    .gantt-today {
+      position: absolute; top: -3px; bottom: -3px; width: 1.5px;
+      background: var(--red); opacity: 0.5; z-index: 2;
+    }
+    .gantt-labels {
+      display: flex; justify-content: space-between;
+      font-size: 8px; color: var(--muted); margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Detail grid */
+    .detail-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px;
+      margin-bottom: 12px;
+    }
+    .detail-row { font-size: 10px; }
+    .detail-label { color: var(--muted); }
+    .detail-val { color: var(--text2); font-weight: 500; }
+
+    /* ─── Progress Controls ─── */
+    .progress-controls {
+      padding: 10px 12px; background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .ctrl-title {
+      font-size: 9px; font-weight: 700; color: var(--dim);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    /* Quick step buttons */
+    .quick-btns { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+    .q-btn {
+      flex: 1; min-width: 42px; padding: 6px 4px; font-size: 10px; font-weight: 700;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--dim);
+      transition: all 0.15s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .q-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+    .q-btn.current { border-color: var(--teal); color: var(--teal); background: var(--teal-glow); }
+    .q-btn.done-btn { border-color: rgba(52,211,153,0.3); color: var(--green); }
+    .q-btn.done-btn:hover { background: rgba(52,211,153,0.1); }
+
+    /* Exact input row */
+    .exact-row {
+      display: flex; align-items: center; gap: 6px; margin-top: 6px;
+    }
+    .exact-input {
+      width: 54px; padding: 5px 8px; font-size: 11px; font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 6px; color: var(--text); text-align: center;
+      outline: none; transition: border-color 0.15s;
+    }
+    .exact-input:focus { border-color: var(--teal); }
+    .exact-slider {
+      flex: 1; height: 4px; -webkit-appearance: none; appearance: none;
+      background: rgba(255,255,255,0.06); border-radius: 2px;
+      outline: none;
+    }
+    .exact-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      border-radius: 50%; background: var(--teal); cursor: pointer;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 6px rgba(45,212,191,0.3);
+    }
+    .save-btn {
+      padding: 6px 14px; font-size: 10px; font-weight: 700;
+      background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+      color: white; border: none; border-radius: 6px;
+      transition: opacity 0.15s; letter-spacing: 0.3px;
+    }
+    .save-btn:hover { opacity: 0.85; }
+    .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Save feedback */
+    .save-feedback {
+      font-size: 9px; margin-top: 6px; min-height: 14px;
+      font-weight: 500;
+    }
+    .save-feedback.ok { color: var(--green); }
+    .save-feedback.err { color: var(--red); }
+
+    /* ─── Last updated ─── */
+    .last-updated {
+      font-size: 8px; color: var(--muted); margin-top: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── Setup banner ─── */
+    .setup-banner {
+      margin: 12px 16px; padding: 14px 16px; border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(45,212,191,0.06), rgba(59,130,246,0.06));
+      border: 1px solid rgba(45,212,191,0.15);
+    }
+    .setup-banner h3 { font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--teal); }
+    .setup-banner p { font-size: 10px; color: var(--dim); line-height: 1.5; margin-bottom: 6px; }
+    .setup-banner code {
+      font-family: 'JetBrains Mono', monospace; font-size: 9px;
+      background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 3px;
+      color: var(--teal);
+    }
+    .setup-input-row { display: flex; gap: 6px; margin-top: 8px; }
+    .setup-input {
+      flex: 1; padding: 7px 10px; font-size: 10px;
+      background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 6px; color: var(--text); outline: none;
+      font-family: inherit;
+    }
+    .setup-input:focus { border-color: var(--teal); }
+    .setup-btn {
+      padding: 7px 16px; font-size: 10px; font-weight: 700;
+      background: var(--teal); color: var(--bg); border: none;
+      border-radius: 6px;
+    }
+    .setup-btn:hover { opacity: 0.85; }
+
+    /* ─── Animations ─── */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .phase { animation: fadeIn 0.3s ease both; }
+    .phase:nth-child(2) { animation-delay: 0.05s; }
+    .phase:nth-child(3) { animation-delay: 0.1s; }
+    .phase:nth-child(4) { animation-delay: 0.15s; }
+    .phase:nth-child(5) { animation-delay: 0.2s; }
+    .phase:nth-child(6) { animation-delay: 0.25s; }
+
+    @keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+    .saving-indicator { animation: pulse 1s ease infinite; color: var(--amber); font-size: 9px; }
+  </style>
+</head>
+<body>
+
+  <div id="app"></div>
+
+  <script>
+    /* ══════════════════════════════════════════════════
+       CONFIG — Update these values for your environment
+       ══════════════════════════════════════════════════ */
+    const CONFIG = {
+      // Your SharePoint site URL (e.g. "https://contoso.sharepoint.com/sites/Research")
+      siteUrl: "",
+      // SharePoint List name
+      listName: "ManuscriptTimeline",
+      // How often to poll for updates (ms) — 30 seconds
+      pollInterval: 30000,
+    };
+
+    /* ══════════════════════════════════
+       STATIC FALLBACK DATA
+       ══════════════════════════════════ */
+    const MANUSCRIPTS_DEFAULT = [
+      {
+        id: "angkor", name: "Angkor Wat Manuscript", short: "Angkor Wat",
+        pi: "Kurt H. Kjær", yearStart: 2023, yearEnd: 2027,
+        phases: [
+          { name: "Field work and sampling", activities: [
+            { id: "AW-F1", name: "Preparation and permission / Nagoya", lead: "Kurt", coResp: "Daniel", progress: 100, expected: "Done", days: 3, start: [2023,1], end: [2023,3] },
+            { id: "AW-F2", name: "Core collection: Angkor Wat, Angkor Thom, West Baray", lead: "Kurt", coResp: "Nicolaj", progress: 100, expected: "Done", days: 21, start: [2023,1], end: [2023,6] },
+            { id: "AW-F3", name: "eDNA subsampling & submission to pipeline", lead: "Kurt", coResp: "Jesper", progress: 100, expected: "Done", days: 4, start: [2023,6], end: [2023,8] },
+            { id: "AW-F4", name: "Sediment description", lead: "Kurt", coResp: "Tony", progress: 70, expected: "2026-03-30", days: 5, start: [2023,6], end: [2026,3] },
+          ]},
+          { name: "Proxy data generation", activities: [
+            { id: "AW-P1", name: "CT scans of cores", lead: "Nicolaj", coResp: "Mikkel", progress: 5, expected: "?", days: 2, start: [2026,3], end: [2026,6] },
+            { id: "AW-P2", name: "Geochronology", lead: "Nicolaj", coResp: "Wes/Tony", progress: 70, expected: "?", days: 10, start: [2023,6], end: [2026,6] },
+            { id: "AW-P3", name: "XRF Scanning", lead: "Marie-Louise", coResp: "Kurt", progress: 100, expected: "Done", days: 5, start: [2024,1], end: [2024,6] },
+            { id: "AW-P4", name: "Discrete Lipid analyses", lead: "Ainara", coResp: "Lars W", progress: 95, expected: "Done", days: null, start: [2024,3], end: [2025,6] },
+            { id: "AW-P5", name: "Mass spectrometry imaging", lead: "Lars W", coResp: null, progress: 80, expected: "2026-04-30", days: null, start: [2025,6], end: [2026,4] },
+            { id: "AW-P6", name: "Hyperspectral imaging", lead: "Lars W", coResp: null, progress: 80, expected: "2026-06-30", days: null, start: [2025,6], end: [2026,6] },
+            { id: "AW-P7", name: "Isotope data", lead: "Enno S", coResp: null, progress: 80, expected: "2026-04-30", days: null, start: [2025,1], end: [2026,4] },
+            { id: "AW-P8", name: "Chironomid analyses", lead: "Ladislav", coResp: null, progress: 5, expected: "?", days: null, start: [2026,4], end: [2026,9] },
+          ]},
+          { name: "Molecular", activities: [
+            { id: "AW-M1", name: "DNA extraction & library prep", lead: "Lasse", coResp: "Xihan", progress: 100, expected: "Done", days: null, start: [2023,6], end: [2024,3] },
+            { id: "AW-M2", name: "DNA Sequencing", lead: "Lasse", coResp: "Julia", progress: 85, expected: "2026-03-12", days: null, start: [2024,1], end: [2026,3] },
+            { id: "AW-M3", name: "Capture sequencing", lead: "Anders", coResp: null, progress: 0, expected: "?", days: null, start: [2026,3], end: [2026,9] },
+          ]},
+          { name: "Bioinformatic", activities: [
+            { id: "AW-B1", name: "Basic taxonomical mapping", lead: "Nicolaj", coResp: null, progress: 75, expected: "2026-06-30", days: null, start: [2024,1], end: [2026,6] },
+            { id: "AW-B2", name: "Plant and animal eDNA", lead: "Nicolaj", coResp: null, progress: 75, expected: "2026-06-30", days: null, start: [2024,3], end: [2026,6] },
+            { id: "AW-B3", name: "Microbial eDNA", lead: "Antonio", coResp: "Noa", progress: 50, expected: "2026-06-30", days: null, start: [2024,6], end: [2026,6] },
+            { id: "AW-B4", name: "Pathogen eDNA", lead: "Martin", coResp: "Astrid", progress: 50, expected: "2026-06-30", days: null, start: [2024,6], end: [2026,6] },
+          ]},
+          { name: "Synthesis", activities: [
+            { id: "AW-S1", name: "Project meeting to layout paper concept", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2026,6], end: [2026,7] },
+            { id: "AW-S2", name: "Writing and interpretation", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2026,7], end: [2026,12] },
+            { id: "AW-S3", name: "Circulation of draft manuscript", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2027,1], end: [2027,2] },
+          ]},
+          { name: "Submission", activities: [
+            { id: "AW-X1", name: "Initial submission and review", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2027,2], end: [2027,5] },
+            { id: "AW-X2", name: "First revision", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2027,5], end: [2027,7] },
+            { id: "AW-X3", name: "Second revision", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2027,7], end: [2027,9] },
+            { id: "AW-X4", name: "Final submission", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2027,9], end: [2027,10] },
+          ]},
+        ]
+      },
+      {
+        id: "landnam", name: "Landnam manuscript, Iceland", short: "Landnam",
+        pi: "Kurt H. Kjær", yearStart: 2023, yearEnd: 2028,
+        phases: [
+          { name: "Field work and sampling", activities: [
+            { id: "LN-F1", name: "Preparation and permission / Nagoya", lead: "Kurt", coResp: "Daniel", progress: 100, expected: "Done", days: 3, start: [2023,1], end: [2023,3] },
+            { id: "LN-F2", name: "Core collection", lead: "Wes", coResp: "Kurt", progress: 100, expected: "Done", days: 43, start: [2023,1], end: [2024,6] },
+            { id: "LN-F3", name: "eDNA subsampling & submission", lead: "Kurt", coResp: "Jesper", progress: 100, expected: "Done", days: 21, start: [2023,6], end: [2024,3] },
+            { id: "LN-F4", name: "Sediment description & catchment data", lead: "Kurt", coResp: "Tony/Wes", progress: 70, expected: "2026-07-30", days: 14, start: [2024,1], end: [2026,7] },
+          ]},
+          { name: "Proxy data generation", activities: [
+            { id: "LN-P1", name: "Geochronology", lead: "Nicolaj", coResp: "Wes/Tony", progress: 85, expected: "?", days: 60, start: [2023,6], end: [2026,6] },
+            { id: "LN-P2", name: "XRF Scanning", lead: "Marie-Louise", coResp: "Kurt", progress: 100, expected: "Done", days: 60, start: [2024,1], end: [2025,1] },
+            { id: "LN-P3", name: "Discrete Lipid analyses", lead: "Ainara", coResp: "Lars W", progress: 95, expected: "Done", days: null, start: [2024,3], end: [2025,6] },
+            { id: "LN-P4", name: "Mass spectrometry imaging", lead: "Lars W", coResp: null, progress: 80, expected: "2026-04-30", days: null, start: [2025,6], end: [2026,4] },
+            { id: "LN-P5", name: "Hyperspectral imaging", lead: "Lars W", coResp: null, progress: 80, expected: "2026-06-30", days: null, start: [2025,6], end: [2026,6] },
+            { id: "LN-P6", name: "Isotope data", lead: "Enno S", coResp: null, progress: 80, expected: "2026-04-30", days: null, start: [2025,1], end: [2026,4] },
+            { id: "LN-P7", name: "Minerogenic input", lead: "Marie-Louise", coResp: "Kurt", progress: 25, expected: null, days: null, start: [2026,1], end: [2026,9] },
+            { id: "LN-P8", name: "Chironomid analyses", lead: "Ladislav", coResp: null, progress: 0, expected: "?", days: null, start: [2026,6], end: [2027,3] },
+          ]},
+          { name: "Molecular", activities: [
+            { id: "LN-M1", name: "DNA extraction & library prep", lead: "Lasse", coResp: "Xihan", progress: 65, expected: "Done", days: null, start: [2023,6], end: [2025,6] },
+            { id: "LN-M2", name: "DNA Sequencing", lead: "Lasse", coResp: "Julia", progress: 50, expected: "2026-03-12", days: null, start: [2024,6], end: [2026,3] },
+            { id: "LN-M3", name: "Capture sequencing", lead: "Wang", coResp: "Zhengquan", progress: 0, expected: "2027-05-20", days: null, start: [2026,6], end: [2027,5] },
+          ]},
+          { name: "Bioinformatic", activities: [
+            { id: "LN-B1", name: "Basic taxonomical mapping", lead: "Wang", coResp: null, progress: 0, expected: "2027-06-30", days: null, start: [2026,6], end: [2027,6] },
+            { id: "LN-B2", name: "Plant and animal eDNA", lead: "Wang", coResp: null, progress: 0, expected: "2027-06-30", days: null, start: [2026,6], end: [2027,6] },
+            { id: "LN-B3", name: "Microbial eDNA", lead: "Antonio", coResp: "Noa", progress: 0, expected: "2027-06-30", days: null, start: [2026,9], end: [2027,6] },
+            { id: "LN-B4", name: "Pathogen eDNA", lead: "Martin", coResp: "Astrid", progress: 0, expected: "2027-06-30", days: null, start: [2026,9], end: [2027,6] },
+          ]},
+          { name: "Synthesis", activities: [
+            { id: "LN-S1", name: "Project meeting", lead: "Kurt", coResp: "Wang", progress: 0, expected: null, days: null, start: [2027,6], end: [2027,7] },
+            { id: "LN-S2", name: "Writing and interpretation", lead: "Kurt", coResp: "Wang", progress: 0, expected: null, days: null, start: [2027,7], end: [2027,12] },
+            { id: "LN-S3", name: "Circulation of draft", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2028,1], end: [2028,2] },
+          ]},
+          { name: "Submission", activities: [
+            { id: "LN-X1", name: "Initial submission and review", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2028,2], end: [2028,5] },
+            { id: "LN-X2", name: "First revision", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2028,5], end: [2028,7] },
+            { id: "LN-X3", name: "Final submission", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2028,7], end: [2028,9] },
+          ]},
+        ]
+      },
+      {
+        id: "loess", name: "Loess Manuscript", short: "Loess",
+        pi: "Kurt H. Kjær", yearStart: 2023, yearEnd: 2028,
+        phases: [
+          { name: "Field work and sampling", activities: [
+            { id: "LO-F1", name: "Preparation and permission / Nagoya", lead: "Wang", coResp: "Kurt", progress: 100, expected: "Done", days: 1, start: [2023,1], end: [2023,2] },
+            { id: "LO-F2", name: "Samples collection", lead: "Wang", coResp: null, progress: 100, expected: "Done", days: 8, start: [2023,1], end: [2023,6] },
+            { id: "LO-F3", name: "eDNA subsampling & submission", lead: "Wang", coResp: null, progress: 100, expected: "Done", days: 8, start: [2023,6], end: [2023,12] },
+            { id: "LO-F4", name: "Compilation of metadata", lead: "Kurt", coResp: "Wang", progress: 10, expected: "2026-03-30", days: 6, start: [2025,6], end: [2026,3] },
+          ]},
+          { name: "Molecular", activities: [
+            { id: "LO-M1", name: "DNA extraction & library prep", lead: "Wang", coResp: null, progress: 50, expected: null, days: null, start: [2024,1], end: [2025,6] },
+            { id: "LO-M2", name: "DNA Sequencing", lead: "Lasse", coResp: "Julia", progress: 0, expected: "2026-03-12", days: null, start: [2025,6], end: [2026,3] },
+            { id: "LO-M3", name: "Capture sequencing", lead: "Wang", coResp: "Zhengquan", progress: 0, expected: "2027-05-20", days: null, start: [2026,3], end: [2027,5] },
+          ]},
+          { name: "Bioinformatic", activities: [
+            { id: "LO-B1", name: "Basic taxonomical mapping", lead: "Wang", coResp: null, progress: 0, expected: "2027-06-30", days: null, start: [2026,6], end: [2027,6] },
+            { id: "LO-B2", name: "Plant and animal eDNA", lead: "Wang", coResp: null, progress: 0, expected: "2027-06-30", days: null, start: [2026,6], end: [2027,6] },
+            { id: "LO-B3", name: "Microbial eDNA", lead: "Antonio", coResp: "Noa", progress: 0, expected: "2027-06-30", days: null, start: [2026,9], end: [2027,6] },
+            { id: "LO-B4", name: "Pathogen eDNA", lead: "Martin", coResp: "Astrid", progress: 0, expected: "2027-06-30", days: null, start: [2026,9], end: [2027,6] },
+          ]},
+          { name: "Synthesis", activities: [
+            { id: "LO-S1", name: "Project meeting", lead: "Kurt", coResp: "Wang", progress: 0, expected: null, days: null, start: [2027,6], end: [2027,7] },
+            { id: "LO-S2", name: "Writing and interpretation", lead: "Kurt", coResp: "Wang", progress: 0, expected: null, days: null, start: [2027,7], end: [2027,12] },
+            { id: "LO-S3", name: "Circulation of draft", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2028,1], end: [2028,2] },
+          ]},
+          { name: "Submission", activities: [
+            { id: "LO-X1", name: "Initial submission and review", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2028,2], end: [2028,5] },
+            { id: "LO-X2", name: "First revision", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2028,5], end: [2028,7] },
+            { id: "LO-X3", name: "Final submission", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2028,7], end: [2028,9] },
+          ]},
+        ]
+      },
+      {
+        id: "rapanui", name: "Rapa Nui Lake", short: "Rapa Nui",
+        pi: "Kurt H. Kjær", yearStart: 2023, yearEnd: 2029,
+        phases: [
+          { name: "Field work and sampling", activities: [
+            { id: "RN-F1", name: "Preparation and permission / Nagoya", lead: "Kurt", coResp: "Daniel", progress: 100, expected: "Done", days: 5, start: [2023,1], end: [2023,3] },
+            { id: "RN-F2", name: "Core collection", lead: "Wes", coResp: "Kurt", progress: 66, expected: "2027-04-30", days: 20, start: [2025,6], end: [2027,4] },
+            { id: "RN-F3", name: "eDNA subsampling & submission", lead: "Kurt", coResp: "Jesper", progress: 66, expected: "2027-08-30", days: 6, start: [2027,4], end: [2027,8] },
+            { id: "RN-F4", name: "Sediment description & catchment", lead: "Kurt", coResp: "Tony/Wes", progress: 10, expected: "2027-09-30", days: 14, start: [2027,6], end: [2027,9] },
+          ]},
+          { name: "Proxy data generation", activities: [
+            { id: "RN-P1", name: "Geochronology", lead: "Nicolaj", coResp: "Wes/Tony", progress: 33, expected: "?", days: 21, start: [2027,6], end: [2028,3] },
+            { id: "RN-P2", name: "XRF Scanning", lead: "Marie-Louise", coResp: "Kurt", progress: 66, expected: "?", days: 21, start: [2027,6], end: [2028,3] },
+            { id: "RN-P3", name: "Discrete Lipid analyses", lead: "Ainara", coResp: "Lars W", progress: 0, expected: "?", days: null, start: [2027,9], end: [2028,6] },
+            { id: "RN-P4", name: "Mass spectrometry imaging", lead: "Lars W", coResp: null, progress: 0, expected: "?", days: null, start: [2027,9], end: [2028,6] },
+            { id: "RN-P5", name: "Hyperspectral imaging", lead: "Lars W", coResp: null, progress: 0, expected: "?", days: null, start: [2027,9], end: [2028,6] },
+            { id: "RN-P6", name: "Isotope data", lead: "Enno S", coResp: null, progress: 0, expected: "?", days: null, start: [2027,9], end: [2028,6] },
+            { id: "RN-P7", name: "Minerogenic input", lead: "Marie-Louise", coResp: "Kurt", progress: 0, expected: "?", days: null, start: [2027,9], end: [2028,6] },
+            { id: "RN-P8", name: "Chironomid analyses", lead: "Ladislav", coResp: null, progress: 0, expected: "?", days: null, start: [2028,1], end: [2028,9] },
+          ]},
+          { name: "Molecular", activities: [
+            { id: "RN-M1", name: "DNA extraction & library prep", lead: "Lasse", coResp: "Xihan", progress: 33, expected: "?", days: null, start: [2027,6], end: [2028,3] },
+            { id: "RN-M2", name: "DNA Sequencing", lead: "Lasse", coResp: "Julia", progress: 0, expected: "?", days: null, start: [2028,1], end: [2028,6] },
+            { id: "RN-M3", name: "Capture sequencing", lead: "Wang", coResp: "Zhengquan", progress: 0, expected: "?", days: null, start: [2028,3], end: [2028,9] },
+          ]},
+          { name: "Bioinformatic", activities: [
+            { id: "RN-B1", name: "Basic taxonomical mapping", lead: "Wang", coResp: null, progress: 0, expected: "?", days: null, start: [2028,6], end: [2029,1] },
+            { id: "RN-B2", name: "Plant and animal eDNA", lead: "Wang", coResp: null, progress: 0, expected: "?", days: null, start: [2028,6], end: [2029,1] },
+            { id: "RN-B3", name: "Microbial eDNA", lead: "Antonio", coResp: "Noa", progress: 0, expected: "?", days: null, start: [2028,6], end: [2029,1] },
+            { id: "RN-B4", name: "Pathogen eDNA", lead: "Martin", coResp: "Astrid", progress: 0, expected: "?", days: null, start: [2028,6], end: [2029,1] },
+          ]},
+          { name: "Synthesis", activities: [
+            { id: "RN-S1", name: "Project meeting", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2029,1], end: [2029,2] },
+            { id: "RN-S2", name: "Writing and interpretation", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2029,2], end: [2029,6] },
+            { id: "RN-S3", name: "Circulation of draft", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2029,6], end: [2029,7] },
+          ]},
+          { name: "Submission", activities: [
+            { id: "RN-X1", name: "Initial submission and review", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2029,7], end: [2029,9] },
+            { id: "RN-X2", name: "First revision", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2029,9], end: [2029,11] },
+            { id: "RN-X3", name: "Final submission", lead: "Kurt", coResp: null, progress: 0, expected: null, days: null, start: [2029,11], end: [2029,12] },
+          ]},
+        ]
+      }
+    ];
+
+    const PHASE_COLORS = {
+      "Field work and sampling": { bar: "#2dd4bf", bg: "#134e4a", accent: "#5eead4" },
+      "Proxy data generation": { bar: "#60a5fa", bg: "#1e3a5f", accent: "#93c5fd" },
+      "Molecular": { bar: "#a78bfa", bg: "#3b1f6e", accent: "#c4b5fd" },
+      "Bioinformatic": { bar: "#4ade80", bg: "#14532d", accent: "#86efac" },
+      "Synthesis": { bar: "#fbbf24", bg: "#713f12", accent: "#fde68a" },
+      "Submission": { bar: "#f472b6", bg: "#831843", accent: "#f9a8d4" },
+    };
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    /* ══════════════════════════════════
+       STATE
+       ══════════════════════════════════ */
+    let manuscripts = JSON.parse(JSON.stringify(MANUSCRIPTS_DEFAULT));
+    let currentTab = "angkor";
+    let currentFilter = "all";
+    let expandedAct = null;
+    let pendingProgress = {};
+    let connectionStatus = "offline"; // "live", "offline", "error"
+    let lastSync = null;
+    let pollTimer = null;
+
+    /* ══════════════════════════════════
+       SHAREPOINT REST API LAYER
+       ══════════════════════════════════ */
+    async function getAccessToken() {
+      // In an Outlook Add-in with SSO, you'd use:
+      // return await OfficeRuntime.auth.getAccessToken({ allowSignInPrompt: true });
+      // For now we use the SharePoint page context approach
+      return null;
+    }
+
+    async function spFetch(endpoint, options = {}) {
+      if (!CONFIG.siteUrl) return null;
+      const url = `${CONFIG.siteUrl}/_api/web/lists/getbytitle('${CONFIG.listName}')${endpoint}`;
+      const headers = {
+        "Accept": "application/json;odata=nometadata",
+        "Content-Type": "application/json;odata=nometadata",
+        ...options.headers,
+      };
+      // Get digest for write operations
+      if (options.method === "POST" || options.method === "MERGE") {
+        try {
+          const digestResp = await fetch(`${CONFIG.siteUrl}/_api/contextinfo`, {
+            method: "POST", headers: { "Accept": "application/json;odata=nometadata" }, credentials: "include"
+          });
+          const digestData = await digestResp.json();
+          headers["X-RequestDigest"] = digestData.FormDigestValue;
+        } catch(e) { /* will fail gracefully */ }
+        if (options.method === "MERGE") {
+          headers["IF-MATCH"] = "*";
+          headers["X-HTTP-Method"] = "MERGE";
+          options.method = "POST";
+        }
+      }
+      const resp = await fetch(url, { ...options, headers, credentials: "include" });
+      if (!resp.ok) throw new Error(`SP ${resp.status}`);
+      const text = await resp.text();
+      return text ? JSON.parse(text) : null;
+    }
+
+    async function loadFromSharePoint() {
+      try {
+        const data = await spFetch("/items?$top=500&$select=Title,ActivityId,Progress,UpdatedBy,Modified");
+        if (!data || !data.value) return false;
+        // Merge SP progress into our local data
+        const map = {};
+        data.value.forEach(item => { map[item.ActivityId] = item; });
+        manuscripts.forEach(ms => {
+          ms.phases.forEach(ph => {
+            ph.activities.forEach(act => {
+              if (map[act.id]) {
+                act.progress = map[act.id].Progress;
+                act._spId = map[act.id].Id; // SharePoint item ID for updates
+                act._updatedBy = map[act.id].UpdatedBy;
+                act._modified = map[act.id].Modified;
+                if (act.progress === 100) act.expected = "Done";
+              }
+            });
+          });
+        });
+        connectionStatus = "live";
+        lastSync = new Date();
+        return true;
+      } catch(e) {
+        console.warn("SharePoint load failed:", e);
+        connectionStatus = CONFIG.siteUrl ? "error" : "offline";
+        return false;
+      }
+    }
+
+    async function saveProgress(activityId, progress) {
+      // Find the activity
+      let act = null;
+      manuscripts.forEach(ms => ms.phases.forEach(ph => ph.activities.forEach(a => {
+        if (a.id === activityId) act = a;
+      })));
+      if (!act) return false;
+
+      // Update locally immediately
+      act.progress = progress;
+      if (progress === 100) act.expected = "Done";
+      render();
+
+      // Persist to SharePoint
+      if (!CONFIG.siteUrl) {
+        showFeedback(activityId, "ok", "Saved locally (no SharePoint connected)");
+        return true;
+      }
+
+      try {
+        if (act._spId) {
+          // Update existing item
+          await spFetch(`/items(${act._spId})`, {
+            method: "MERGE",
+            body: JSON.stringify({ Progress: progress })
+          });
+        } else {
+          // Create new item
+          const result = await spFetch("/items", {
+            method: "POST",
+            body: JSON.stringify({
+              Title: act.name,
+              ActivityId: activityId,
+              Progress: progress,
+              UpdatedBy: (typeof Office !== "undefined" && Office.context?.mailbox?.userProfile?.displayName) || "User"
+            })
+          });
+          if (result) act._spId = result.Id;
+        }
+        act._modified = new Date().toISOString();
+        act._updatedBy = (typeof Office !== "undefined" && Office.context?.mailbox?.userProfile?.displayName) || "You";
+        showFeedback(activityId, "ok", "Saved & synced");
+        return true;
+      } catch(e) {
+        console.error("Save failed:", e);
+        showFeedback(activityId, "err", "Save failed — stored locally");
+        return false;
+      }
+    }
+
+    function showFeedback(actId, type, msg) {
+      const el = document.getElementById(`feedback-${actId}`);
+      if (el) {
+        el.className = `save-feedback ${type}`;
+        el.textContent = msg;
+        setTimeout(() => { if (el) el.textContent = ""; }, 3000);
+      }
+    }
+
+    /* ══════════════════════════════════
+       POLLING
+       ══════════════════════════════════ */
+    function startPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        await loadFromSharePoint();
+        render();
+      }, CONFIG.pollInterval);
+    }
+
+    /* ══════════════════════════════════
+       RENDERING
+       ══════════════════════════════════ */
+    function render() {
+      const ms = manuscripts.find(m => m.id === currentTab);
+      const now = new Date();
+      const app = document.getElementById("app");
+
+      // Connection bar
+      const connLabel = connectionStatus === "live" ? "Connected to SharePoint"
+        : connectionStatus === "error" ? "SharePoint unreachable — working offline"
+        : "Offline mode";
+      const connDotCls = connectionStatus === "live" ? "live" : connectionStatus === "error" ? "error" : "offline";
+
+      // Stats
+      const allActs = ms.phases.flatMap(p => p.activities);
+      const total = allActs.length;
+      const done = allActs.filter(a => a.progress === 100).length;
+      const active = allActs.filter(a => a.progress > 0 && a.progress < 100).length;
+      const avg = Math.round(allActs.reduce((s,a) => s + a.progress, 0) / total);
+
+      // Phases for current filter
+      const phases = currentFilter === "all" ? ms.phases : ms.phases.filter(p => p.name === currentFilter);
+      const allPhaseNames = [...new Set(ms.phases.map(p => p.name))];
+
+      // Gantt calculation helpers
+      const totalMonths = (ms.yearEnd - ms.yearStart + 1) * 12;
+      const todayOff = (now.getFullYear() - ms.yearStart) * 12 + now.getMonth();
+      const todayPct = Math.max(0, Math.min(100, (todayOff / totalMonths) * 100));
+
+      let html = "";
+
+      // ── Connection bar ──
+      html += `<div class="connection-bar">
+        <div class="conn-dot ${connDotCls}"></div>
+        <span style="color:var(--dim)">${connLabel}</span>
+        ${lastSync ? `<span style="margin-left:auto;color:var(--muted);font-family:'JetBrains Mono',monospace">Last sync: ${lastSync.toLocaleTimeString()}</span>` : ''}
+      </div>`;
+
+      // ── Header ──
+      html += `<div class="header">
+        <div class="header-top">
+          <div class="header-icon">T</div>
+          <div>
+            <div class="header-title">Publication Timeline</div>
+            <div class="header-sub">Lead: Kurt H. Kjær</div>
+          </div>
+          <div class="header-right">
+            <div class="header-date">${MONTHS[now.getMonth()]} ${now.getFullYear()}</div>
+            <button class="header-refresh" onclick="refreshData()">&#x21bb; Refresh</button>
+          </div>
+        </div>
+      </div>`;
+
+      // ── Tabs ──
+      html += `<div class="tabs">`;
+      manuscripts.forEach(m => {
+        const mActs = m.phases.flatMap(p => p.activities);
+        const mAvg = Math.round(mActs.reduce((s,a) => s+a.progress,0) / mActs.length);
+        html += `<button class="tab ${m.id === currentTab ? 'active' : ''}" onclick="switchTab('${m.id}')">
+          ${m.short}
+          <span class="tab-badge">${mAvg}%</span>
+        </button>`;
+      });
+      html += `</div>`;
+
+      // ── Stats ──
+      html += `<div class="stats">
+        <div class="stat"><div class="stat-val" style="color:var(--teal)">${avg}%</div><div class="stat-lbl">Overall</div></div>
+        <div class="stat"><div class="stat-val" style="color:var(--green)">${done}</div><div class="stat-lbl">Complete</div></div>
+        <div class="stat"><div class="stat-val" style="color:var(--amber)">${active}</div><div class="stat-lbl">In progress</div></div>
+        <div class="stat"><div class="stat-val" style="color:var(--dim)">${total - done - active}</div><div class="stat-lbl">Pending</div></div>
+      </div>`;
+
+      // ── Filters ──
+      html += `<div class="filters">`;
+      html += `<button class="chip ${currentFilter === 'all' ? 'on' : ''}" onclick="setFilter('all')">All</button>`;
+      allPhaseNames.forEach(name => {
+        const c = PHASE_COLORS[name] || PHASE_COLORS["Synthesis"];
+        const on = currentFilter === name;
+        html += `<button class="chip" style="${on ? `border-color:${c.bar}44;background:${c.bg}55;color:${c.accent}` : ''}" onclick="setFilter('${name}')">${name}</button>`;
+      });
+      html += `</div>`;
+
+      // ── Setup banner (if no SharePoint configured) ──
+      if (!CONFIG.siteUrl) {
+        html += `<div class="setup-banner">
+          <h3>Connect to SharePoint for real-time sync</h3>
+          <p>Enter your SharePoint site URL below. Progress updates will sync across the whole team in real time. The list <code>${CONFIG.listName}</code> will store all activity progress.</p>
+          <div class="setup-input-row">
+            <input class="setup-input" id="spUrlInput" placeholder="https://yourorg.sharepoint.com/sites/Research" />
+            <button class="setup-btn" onclick="connectSharePoint()">Connect</button>
+          </div>
+        </div>`;
+      }
+
+      // ── Timeline ──
+      html += `<div class="timeline">`;
+
+      // Year axis
+      html += `<div style="display:flex;margin-bottom:6px">`;
+      for (let y = ms.yearStart; y <= ms.yearEnd; y++) {
+        html += `<div style="flex:1;text-align:center;font-size:9px;font-weight:700;color:var(--dim);border-bottom:1px solid var(--border);padding-bottom:3px;letter-spacing:0.5px">${y}</div>`;
+      }
+      html += `</div>`;
+
+      // Phases
+      phases.forEach(phase => {
+        const c = PHASE_COLORS[phase.name] || PHASE_COLORS["Synthesis"];
+        const phDone = phase.activities.filter(a => a.progress === 100).length;
+
+        html += `<div class="phase">`;
+        html += `<div class="phase-head">
+          <div class="phase-pip" style="background:${c.bar}"></div>
+          <div class="phase-label" style="color:${c.accent}">${phase.name}</div>
+          <div class="phase-stat">${phDone}/${phase.activities.length}</div>
+        </div>`;
+
+        phase.activities.forEach(act => {
+          const isDone = act.progress === 100;
+          const isExpanded = expandedAct === act.id;
+          const startOff = (act.start[0] - ms.yearStart) * 12 + (act.start[1] - 1);
+          const endOff = (act.end[0] - ms.yearStart) * 12 + (act.end[1] - 1);
+          const barLeft = (startOff / totalMonths) * 100;
+          const barWidth = ((endOff - startOff + 1) / totalMonths) * 100;
+          const pctColor = isDone ? c.bar : act.progress > 0 ? "var(--text2)" : "var(--muted)";
+          const dotStyle = isDone ? `background:${c.bar}`
+            : act.progress > 0 ? `background:${c.bg};border:1.5px solid ${c.bar}`
+            : `background:rgba(255,255,255,0.08)`;
+          const expected = act.expected === "Done" ? "Done" : act.expected === "?" ? "TBD" : act.expected || "—";
+          const pending = pendingProgress[act.id] !== undefined ? pendingProgress[act.id] : act.progress;
+
+          html += `<div class="act ${isExpanded ? 'expanded' : ''}" onclick="toggleAct('${act.id}')">`;
+
+          // Top row
+          html += `<div class="act-top">
+            <div class="act-dot" style="${dotStyle}"></div>
+            <div class="act-name ${isDone ? 'done' : ''}" title="${act.name}">${act.name}</div>
+            <div class="act-pct" style="color:${pctColor}">${act.progress}%</div>
+          </div>`;
+
+          // Progress bar
+          html += `<div class="act-bar-wrap">
+            <div class="act-bar"><div class="act-bar-fill" style="width:${act.progress}%;background:linear-gradient(90deg,${c.bar}aa,${c.bar})"></div></div>
+          </div>`;
+
+          // Meta
+          html += `<div class="act-meta">
+            <span class="act-meta-tag">&#9679; ${act.lead}${act.coResp ? ' + ' + act.coResp : ''}</span>
+            <span class="act-meta-tag">${expected}</span>
+            ${act._updatedBy ? `<span class="act-meta-tag" style="margin-left:auto">by ${act._updatedBy}</span>` : ''}
+          </div>`;
+
+          // ── Expanded panel ──
+          html += `<div class="panel" onclick="event.stopPropagation()">`;
+
+          // Gantt bar
+          html += `<div class="gantt-labels">
+            <span>${MONTHS[act.start[1]-1]} ${act.start[0]}</span>
+            <span>${MONTHS[act.end[1]-1]} ${act.end[0]}</span>
+          </div>`;
+          html += `<div class="gantt">
+            <div class="gantt-track" style="left:${barLeft}%;width:${barWidth}%;background:${c.bg}">
+              <div class="gantt-fill" style="width:${act.progress}%;background:linear-gradient(90deg,${c.bar}bb,${c.bar})"></div>
+            </div>
+            ${todayPct >= 0 && todayPct <= 100 ? `<div class="gantt-today" style="left:${todayPct}%"></div>` : ''}
+          </div>`;
+
+          // Detail grid
+          html += `<div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">Lead:</span> <span class="detail-val">${act.lead}</span></div>
+            <div class="detail-row"><span class="detail-label">Co-resp:</span> <span class="detail-val">${act.coResp || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Expected:</span> <span class="detail-val">${expected}</span></div>
+            <div class="detail-row"><span class="detail-label">Work days:</span> <span class="detail-val">${act.days || '—'}</span></div>
+          </div>`;
+
+          // ── Progress controls ──
+          html += `<div class="progress-controls">
+            <div class="ctrl-title">Update Progress</div>
+            <div class="quick-btns">
+              ${[0, 25, 50, 75, 100].map(v => {
+                const isCurrent = pending === v;
+                const cls = v === 100 ? 'q-btn done-btn' : 'q-btn';
+                return `<button class="${cls} ${isCurrent ? 'current' : ''}"
+                  onclick="event.stopPropagation(); setPending('${act.id}', ${v})">
+                  ${v === 100 ? '&#10003; Done' : v + '%'}
+                </button>`;
+              }).join("")}
+            </div>
+            <div class="exact-row">
+              <input type="range" class="exact-slider" min="0" max="100" step="1" value="${pending}"
+                oninput="event.stopPropagation(); slidePending('${act.id}', this.value)"
+                onclick="event.stopPropagation()" />
+              <input type="number" class="exact-input" min="0" max="100" value="${pending}"
+                onclick="event.stopPropagation()"
+                onchange="event.stopPropagation(); setPending('${act.id}', parseInt(this.value)||0)" />
+              <button class="save-btn" onclick="event.stopPropagation(); doSave('${act.id}')"
+                ${pending === act.progress ? 'disabled' : ''}>Save</button>
+            </div>
+            <div class="save-feedback" id="feedback-${act.id}"></div>
+            ${act._modified ? `<div class="last-updated">Last update: ${new Date(act._modified).toLocaleString()}</div>` : ''}
+          </div>`;
+
+          html += `</div>`; // panel
+          html += `</div>`; // act
+        });
+
+        html += `</div>`; // phase
+      });
+
+      html += `</div>`; // timeline
+
+      app.innerHTML = html;
+    }
+
+    /* ══════════════════════════════════
+       INTERACTION HANDLERS
+       ══════════════════════════════════ */
+    function switchTab(id) { currentTab = id; currentFilter = "all"; expandedAct = null; pendingProgress = {}; render(); }
+    function setFilter(f) { currentFilter = f; expandedAct = null; render(); }
+    function toggleAct(id) {
+      expandedAct = expandedAct === id ? null : id;
+      if (expandedAct && pendingProgress[id] === undefined) {
+        // Init pending to current value
+        manuscripts.forEach(ms => ms.phases.forEach(ph => ph.activities.forEach(a => {
+          if (a.id === id) pendingProgress[id] = a.progress;
+        })));
+      }
+      render();
+    }
+    function setPending(id, val) {
+      pendingProgress[id] = Math.max(0, Math.min(100, val));
+      render();
+    }
+    function slidePending(id, val) {
+      pendingProgress[id] = parseInt(val);
+      // Update input + buttons without full re-render for smoothness
+      const input = document.querySelector(`.exact-input`);
+      if (input) input.value = val;
+    }
+    async function doSave(id) {
+      const val = pendingProgress[id];
+      if (val === undefined) return;
+      await saveProgress(id, val);
+      delete pendingProgress[id];
+      render();
+    }
+    async function refreshData() {
+      await loadFromSharePoint();
+      render();
+    }
+    function connectSharePoint() {
+      const input = document.getElementById("spUrlInput");
+      if (input && input.value.trim()) {
+        CONFIG.siteUrl = input.value.trim().replace(/\/$/, "");
+        loadFromSharePoint().then(() => { render(); startPolling(); });
+      }
+    }
+
+    /* ══════════════════════════════════
+       INIT — works inside Outlook AND standalone
+       ══════════════════════════════════ */
+    function init() {
+      loadFromSharePoint().then(() => {
+        render();
+        if (CONFIG.siteUrl) startPolling();
+      });
+    }
+
+    // Try Office.onReady if available (inside Outlook), otherwise just start
+    try {
+      if (typeof Office !== "undefined" && Office.onReady) {
+        Office.onReady(function() { init(); });
+      } else {
+        throw new Error("No Office");
+      }
+    } catch(e) {
+      // Running outside Outlook (browser preview) — just start directly
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+      } else {
+        init();
+      }
+    }
+  </script>
+</body>
+</html>
