@@ -309,7 +309,7 @@ function App() {
     Object.entries(TEMPLATE_PHASES).forEach(([phase, acts]) => { sel[phase] = [...acts]; });
     return sel;
   };
-  const [newForm, setNewForm] = useState({ name:"", short:"", pi:"", ys:2026, ye:2029, selectedActs: buildAllSelected(), expandedPhase: null, customAct:"", editingAct: null });
+  const [newForm, setNewForm] = useState({ name:"", short:"", pi:"", ys:2026, ye:2029, selectedActs: buildAllSelected(), expandedPhase: null, customAct:"", editingAct: null, customPhases: [], newPhaseName:"" });
   const scrollRef = useRef(null);
   const now = new Date();
   const curY = now.getFullYear(), curM = now.getMonth() + 1;
@@ -349,7 +349,7 @@ function App() {
     });
     setTab(id);
     setShowNew(false);
-    setNewForm({ name:"", short:"", pi:"", ys:2026, ye:2029, selectedActs: buildAllSelected(), expandedPhase: null, customAct:"", editingAct: null });
+    setNewForm({ name:"", short:"", pi:"", ys:2026, ye:2029, selectedActs: buildAllSelected(), expandedPhase: null, customAct:"", editingAct: null, customPhases: [], newPhaseName:"" });
   };
 
   const toggleActivity = (phaseName, actName) => {
@@ -407,6 +407,30 @@ function App() {
       selectedActs: { ...prev.selectedActs, [phaseName]: [...(prev.selectedActs[phaseName] || []), prev.customAct.trim()] },
       customAct: ""
     }));
+  };
+
+  const addCustomPhase = () => {
+    const name = newForm.newPhaseName.trim();
+    if (!name || TEMPLATE_PHASES[name] || newForm.customPhases.includes(name)) return;
+    setNewForm(prev => ({
+      ...prev,
+      customPhases: [...prev.customPhases, name],
+      selectedActs: { ...prev.selectedActs, [name]: [] },
+      newPhaseName: "",
+      expandedPhase: name
+    }));
+  };
+
+  const deleteCustomPhase = (phaseName) => {
+    setNewForm(prev => {
+      const newActs = { ...prev.selectedActs };
+      delete newActs[phaseName];
+      return {
+        ...prev,
+        customPhases: prev.customPhases.filter(p => p !== phaseName),
+        selectedActs: newActs
+      };
+    });
   };
 
   const hasAnySelected = Object.values(newForm.selectedActs).some(acts => acts.length > 0);
@@ -1229,10 +1253,13 @@ function App() {
               {totalSelected} activities selected
             </div>
 
-            {Object.entries(TEMPLATE_PHASES).map(([phaseName, templateActs]) => {
-              const c = PC[phaseName] || PC["Synthesis"];
+            {/* Template phases + custom phases */}
+            {[...Object.entries(TEMPLATE_PHASES).map(([n,a]) => ({name:n, acts:a, isCustom:false})),
+              ...newForm.customPhases.map(n => ({name:n, acts:[], isCustom:true}))
+            ].map(({name: phaseName, acts: templateActs, isCustom: isCustomPhase}) => {
+              const c = PC[phaseName] || { bar:"#6366f1", bg:"#eef2ff", accent:"#4338ca", cell:"#c7d2fe" };
               const selected = newForm.selectedActs[phaseName] || [];
-              const allOn = templateActs.every(a => selected.includes(a));
+              const allOn = templateActs.length > 0 && templateActs.every(a => selected.includes(a));
               const someOn = selected.length > 0;
               const isOpen = newForm.expandedPhase === phaseName;
               // Include any custom activities (ones not in template)
@@ -1253,10 +1280,18 @@ function App() {
                         fontSize:9, color:"#ffffff", fontWeight:800, flexShrink:0, cursor:"pointer" }}>
                       {allOn ? "\u2713" : someOn ? "\u2013" : ""}
                     </div>
-                    <div style={{ flex:1 }}>
+                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:6 }}>
                       <span style={{ fontSize:11, fontWeight:600, color:someOn?c.accent:"#94a3b8" }}>{phaseName}</span>
-                      <span style={{ fontSize:8, color:"#94a3b8", marginLeft:6 }}>{selected.length} selected</span>
+                      {isCustomPhase && <span style={{ fontSize:7, fontWeight:700, color:"#6366f1", background:"#eef2ff", borderRadius:3, padding:"1px 4px", textTransform:"uppercase", letterSpacing:0.3 }}>custom</span>}
+                      <span style={{ fontSize:8, color:"#94a3b8" }}>{selected.length} selected</span>
                     </div>
+                    {isCustomPhase && (
+                      <button onClick={e => { e.stopPropagation(); deleteCustomPhase(phaseName); }}
+                        style={{ background:"none", border:"none", color:"#cbd5e1", cursor:"pointer", fontSize:14, padding:"0 2px", fontFamily:"inherit", lineHeight:1 }}
+                        onMouseEnter={e => e.currentTarget.style.color="#ef4444"}
+                        onMouseLeave={e => e.currentTarget.style.color="#cbd5e1"}
+                        title="Remove this phase">&times;</button>
+                    )}
                     <span style={{ fontSize:10, color:"#94a3b8", transform:isOpen?"rotate(180deg)":"rotate(0)", transition:"transform 0.2s" }}>{"\u25BE"}</span>
                   </div>
 
@@ -1352,6 +1387,26 @@ function App() {
                 </div>
               );
             })}
+
+            {/* Add custom phase */}
+            <div style={{ marginTop:8, marginBottom:12 }}>
+              <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+                <input className="field-input" placeholder="Create new phase (e.g. Fieldwork Analysis)..."
+                  value={newForm.newPhaseName}
+                  style={{ flex:1, fontSize:11, padding:"7px 10px" }}
+                  onChange={e => setNewForm(p => ({...p, newPhaseName:e.target.value}))}
+                  onKeyDown={e => { if(e.key==="Enter") { e.preventDefault(); addCustomPhase(); }}} />
+                <button onClick={addCustomPhase}
+                  disabled={!newForm.newPhaseName.trim()}
+                  style={{ padding:"7px 14px", fontSize:10, fontWeight:700,
+                    background:newForm.newPhaseName.trim() ? "#6366f1" : "#e2e8f0",
+                    color:newForm.newPhaseName.trim() ? "#ffffff" : "#94a3b8",
+                    border:"none", borderRadius:6, cursor:newForm.newPhaseName.trim() ? "pointer" : "default",
+                    fontFamily:"inherit", whiteSpace:"nowrap" }}>
+                  + Phase
+                </button>
+              </div>
+            </div>
 
             <button className="btn-create" onClick={createManuscript}
               disabled={!newForm.name || !newForm.short || !hasAnySelected || newForm.ye <= newForm.ys}>
