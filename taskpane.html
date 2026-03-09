@@ -274,6 +274,7 @@ function App() {
   const RH = isWide ? RH_EXPANDED : RH_COMPACT;
   const dashCWVal = isWide ? 22 : 18;
   const [editField, setEditField] = useState(null);
+  const [editingPhaseName, setEditingPhaseName] = useState(null); // {msId, oldName}
   const [showNew, setShowNew] = useState(false);
   const [showLog, setShowLog] = useState(false);
   // Changelog: array of { msId, msName, actName, field, from, to, time, snapshot }
@@ -309,7 +310,8 @@ function App() {
     Object.entries(TEMPLATE_PHASES).forEach(([phase, acts]) => { sel[phase] = [...acts]; });
     return sel;
   };
-  const [newForm, setNewForm] = useState({ name:"", short:"", pi:"", ys:2026, ye:2029, selectedActs: buildAllSelected(), expandedPhase: null, customAct:"", editingAct: null, customPhases: [], newPhaseName:"" });
+  const defaultPhaseOrder = Object.keys(TEMPLATE_PHASES);
+  const [newForm, setNewForm] = useState({ name:"", short:"", pi:"", ys:2026, ye:2029, selectedActs: buildAllSelected(), expandedPhase: null, customAct:"", editingAct: null, customPhases: [], newPhaseName:"", phaseOrder: [...defaultPhaseOrder], editingPhase: null });
   const scrollRef = useRef(null);
   const now = new Date();
   const curY = now.getFullYear(), curM = now.getMonth() + 1;
@@ -326,7 +328,8 @@ function App() {
     const prefix = newForm.short.replace(/[^A-Z]/gi,"").substring(0,3).toUpperCase() || "NW";
     const id = prefix.toLowerCase() + "_" + Date.now();
     const phases = [];
-    Object.entries(newForm.selectedActs).forEach(([phaseName, acts]) => {
+    newForm.phaseOrder.forEach(phaseName => {
+      const acts = newForm.selectedActs[phaseName] || [];
       if (acts.length === 0) return;
       const phaseCode = phaseName.charAt(0).toUpperCase();
       phases.push({
@@ -349,7 +352,7 @@ function App() {
     });
     setTab(id);
     setShowNew(false);
-    setNewForm({ name:"", short:"", pi:"", ys:2026, ye:2029, selectedActs: buildAllSelected(), expandedPhase: null, customAct:"", editingAct: null, customPhases: [], newPhaseName:"" });
+    setNewForm({ name:"", short:"", pi:"", ys:2026, ye:2029, selectedActs: buildAllSelected(), expandedPhase: null, customAct:"", editingAct: null, customPhases: [], newPhaseName:"", phaseOrder: [...defaultPhaseOrder], editingPhase: null });
   };
 
   const toggleActivity = (phaseName, actName) => {
@@ -416,6 +419,7 @@ function App() {
       ...prev,
       customPhases: [...prev.customPhases, name],
       selectedActs: { ...prev.selectedActs, [name]: [] },
+      phaseOrder: [...prev.phaseOrder, name],
       newPhaseName: "",
       expandedPhase: name
     }));
@@ -428,7 +432,37 @@ function App() {
       return {
         ...prev,
         customPhases: prev.customPhases.filter(p => p !== phaseName),
-        selectedActs: newActs
+        selectedActs: newActs,
+        phaseOrder: prev.phaseOrder.filter(p => p !== phaseName)
+      };
+    });
+  };
+
+  const movePhase = (phaseName, dir) => {
+    setNewForm(prev => {
+      const arr = [...prev.phaseOrder];
+      const idx = arr.indexOf(phaseName);
+      const newIdx = idx + dir;
+      if (idx < 0 || newIdx < 0 || newIdx >= arr.length) return prev;
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+      return { ...prev, phaseOrder: arr };
+    });
+  };
+
+  const renamePhase = (oldName, newName) => {
+    if (!newName.trim() || newName === oldName) return;
+    const trimmed = newName.trim();
+    setNewForm(prev => {
+      const newActs = { ...prev.selectedActs };
+      newActs[trimmed] = newActs[oldName] || [];
+      delete newActs[oldName];
+      return {
+        ...prev,
+        phaseOrder: prev.phaseOrder.map(p => p === oldName ? trimmed : p),
+        customPhases: prev.customPhases.map(p => p === oldName ? trimmed : p),
+        selectedActs: newActs,
+        expandedPhase: prev.expandedPhase === oldName ? trimmed : prev.expandedPhase,
+        editingPhase: null
       };
     });
   };
@@ -511,6 +545,26 @@ function App() {
       return newData;
     });
   }, [data]);
+
+  const renameManuscriptPhase = (msId, oldName, newName) => {
+    if (!newName.trim() || newName.trim() === oldName) { setEditingPhaseName(null); return; }
+    setUndoStack(prev => [...prev, JSON.parse(JSON.stringify(data))].slice(-30));
+    setData(prev => {
+      const newData = prev.map(m => m.id !== msId ? m : {
+        ...m,
+        phases: m.phases.map(p => p.name !== oldName ? p : { ...p, name: newName.trim() })
+      });
+      fbSave("manuscripts", newData);
+      return newData;
+    });
+    setChangelog(prev => {
+      const ms = data.find(m => m.id === msId);
+      const newLog = [{ msId, msName: ms?.short || ms?.name || "", actName: "", field: "Phase renamed", from: oldName, to: newName.trim(), time: new Date().toISOString() }, ...prev].slice(0, 200);
+      fbSave("changelog", newLog);
+      return newLog;
+    });
+    setEditingPhaseName(null);
+  };
 
   const toggleMonth = useCallback((id, y, m) => {
     const act = findAct(id);
@@ -1064,7 +1118,19 @@ function App() {
                 {/* Phase header */}
                 <div style={{ display:"flex", alignItems:"center", gap:4, height:20, padding:"0 6px", background:"#f8fafc", borderBottom:"1px solid #f1f5f9" }}>
                   <div style={{ width:3, height:10, borderRadius:1, background:c.bar }} />
-                  <span style={{ fontSize:8, fontWeight:700, color:c.accent, textTransform:"uppercase", letterSpacing:1 }}>{phase.name}</span>
+                  {editingPhaseName?.msId === ms.id && editingPhaseName?.oldName === phase.name ? (
+                    <input className="edit-input" autoFocus defaultValue={phase.name}
+                      style={{ fontSize:8, fontWeight:700, textTransform:"uppercase", letterSpacing:1, padding:"1px 4px", width:180 }}
+                      onBlur={e => renameManuscriptPhase(ms.id, phase.name, e.target.value)}
+                      onKeyDown={e => {
+                        if(e.key==="Enter") renameManuscriptPhase(ms.id, phase.name, e.target.value);
+                        if(e.key==="Escape") setEditingPhaseName(null);
+                      }} />
+                  ) : (
+                    <span onDoubleClick={() => setEditingPhaseName({msId:ms.id, oldName:phase.name})}
+                      style={{ fontSize:8, fontWeight:700, color:c.accent, textTransform:"uppercase", letterSpacing:1, cursor:"text" }}
+                      title="Double-click to rename">{phase.name}</span>
+                  )}
                 </div>
                 {/* Activities */}
                 {phase.acts.map(act => {
@@ -1253,10 +1319,10 @@ function App() {
               {totalSelected} activities selected
             </div>
 
-            {/* Template phases + custom phases */}
-            {[...Object.entries(TEMPLATE_PHASES).map(([n,a]) => ({name:n, acts:a, isCustom:false})),
-              ...newForm.customPhases.map(n => ({name:n, acts:[], isCustom:true}))
-            ].map(({name: phaseName, acts: templateActs, isCustom: isCustomPhase}) => {
+            {/* Template phases + custom phases — ordered by phaseOrder */}
+            {newForm.phaseOrder.map((phaseName, phaseIdx) => {
+              const templateActs = TEMPLATE_PHASES[phaseName] || [];
+              const isCustomPhase = newForm.customPhases.includes(phaseName);
               const c = PC[phaseName] || { bar:"#6366f1", bg:"#eef2ff", accent:"#4338ca", cell:"#c7d2fe" };
               const selected = newForm.selectedActs[phaseName] || [];
               const allOn = templateActs.length > 0 && templateActs.every(a => selected.includes(a));
@@ -1270,9 +1336,20 @@ function App() {
                 <div key={phaseName} style={{ marginBottom:4, border:`1px solid ${someOn ? c.bar+"33" : "#0f172a"}`,
                   borderRadius:8, overflow:"hidden", transition:"all 0.15s" }}>
                   {/* Phase header row */}
-                  <div style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", cursor:"pointer",
-                    background: someOn ? `${c.bg}33` : "transparent" }}
+                  <div style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 10px", cursor:"pointer",
+                    background: someOn ? `${c.bg}` : "transparent" }}
                     onClick={() => setNewForm(p => ({...p, expandedPhase: isOpen ? null : phaseName}))}>
+                    {/* Reorder arrows */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:0, flexShrink:0 }} onClick={e => e.stopPropagation()}>
+                      <button onClick={() => movePhase(phaseName, -1)}
+                        style={{ background:"none", border:"none", color:phaseIdx===0?"#e2e8f0":"#94a3b8", cursor:phaseIdx===0?"default":"pointer",
+                          fontSize:9, padding:0, lineHeight:1, fontFamily:"inherit" }}
+                        disabled={phaseIdx===0}>{"\u25B4"}</button>
+                      <button onClick={() => movePhase(phaseName, 1)}
+                        style={{ background:"none", border:"none", color:phaseIdx===newForm.phaseOrder.length-1?"#e2e8f0":"#94a3b8",
+                          cursor:phaseIdx===newForm.phaseOrder.length-1?"default":"pointer", fontSize:9, padding:0, lineHeight:1, fontFamily:"inherit" }}
+                        disabled={phaseIdx===newForm.phaseOrder.length-1}>{"\u25BE"}</button>
+                    </div>
                     {/* Select all checkbox */}
                     <div onClick={e => { e.stopPropagation(); toggleAllInPhase(phaseName); }}
                       style={{ width:14, height:14, borderRadius:4, border:`2px solid ${allOn?c.bar:someOn?c.bar+"88":"#334155"}`,
@@ -1281,7 +1358,20 @@ function App() {
                       {allOn ? "\u2713" : someOn ? "\u2013" : ""}
                     </div>
                     <div style={{ flex:1, display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ fontSize:11, fontWeight:600, color:someOn?c.accent:"#94a3b8" }}>{phaseName}</span>
+                      {newForm.editingPhase === phaseName ? (
+                        <input className="edit-input" autoFocus defaultValue={phaseName}
+                          style={{ fontSize:11, fontWeight:600, padding:"2px 6px", width:160 }}
+                          onClick={e => e.stopPropagation()}
+                          onBlur={e => renamePhase(phaseName, e.target.value)}
+                          onKeyDown={e => {
+                            if(e.key==="Enter") renamePhase(phaseName, e.target.value);
+                            if(e.key==="Escape") setNewForm(p=>({...p,editingPhase:null}));
+                          }} />
+                      ) : (
+                        <span onDoubleClick={e => { e.stopPropagation(); setNewForm(p=>({...p,editingPhase:phaseName})); }}
+                          style={{ fontSize:11, fontWeight:600, color:someOn?c.accent:"#94a3b8", cursor:"text" }}
+                          title="Double-click to rename">{phaseName}</span>
+                      )}
                       {isCustomPhase && <span style={{ fontSize:7, fontWeight:700, color:"#6366f1", background:"#eef2ff", borderRadius:3, padding:"1px 4px", textTransform:"uppercase", letterSpacing:0.3 }}>custom</span>}
                       <span style={{ fontSize:8, color:"#94a3b8" }}>{selected.length} selected</span>
                     </div>
