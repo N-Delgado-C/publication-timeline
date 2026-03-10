@@ -270,9 +270,10 @@ function App() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const isWide = winWidth > 600;
-  const CW = isWide ? CW_EXPANDED : CW_COMPACT;
-  const RH = isWide ? RH_EXPANDED : RH_COMPACT;
-  const dashCWVal = isWide ? 22 : 18;
+  const [zoom, setZoom] = useState(isWide ? 100 : 70);
+  const CW = Math.round((zoom / 100) * 20);
+  const RH = Math.round((zoom / 100) * 24);
+  const dashCWVal = Math.round((zoom / 100) * 20);
   const [editField, setEditField] = useState(null);
   const [editingPhaseName, setEditingPhaseName] = useState(null); // {msId, oldName}
   const [showNew, setShowNew] = useState(false);
@@ -770,6 +771,20 @@ function App() {
           title="Add new manuscript timeline">
           +
         </button>
+        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:4, padding:"0 10px", flexShrink:0 }}>
+          <button onClick={() => setZoom(z => Math.max(40, z-15))}
+            style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:4, width:20, height:20,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:12, color:"#64748b", cursor:"pointer", fontFamily:"inherit", lineHeight:1 }}>−</button>
+          <input type="range" min={40} max={150} step={5} value={zoom}
+            onChange={e => setZoom(parseInt(e.target.value))}
+            style={{ width:60, accentColor:"#0d9488" }} />
+          <button onClick={() => setZoom(z => Math.min(150, z+15))}
+            style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:4, width:20, height:20,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:12, color:"#64748b", cursor:"pointer", fontFamily:"inherit", lineHeight:1 }}>+</button>
+          <span style={{ fontSize:8, color:"#94a3b8", fontFamily:"'JetBrains Mono',monospace", minWidth:28 }}>{zoom}%</span>
+        </div>
       </div>
 
       {/* ALL OVERVIEW TAB */}
@@ -947,7 +962,7 @@ function App() {
                       color:(y===curY && mi+1===curM) ? "#dc2626" : "#94a3b8",
                       background:(y===curY && mi+1===curM) ? "#fef2f2" : "transparent",
                       lineHeight:"16px",
-                      borderRight:mi===11?"1px solid #e2e8f0":"none" }}>{MO[mi]}</div>
+                      borderRight:mi===11?"1px solid #cbd5e1":"1px solid #f0f0f0" }}>{MO[mi]}</div>
                   )))}
                 </div>
 
@@ -977,7 +992,7 @@ function App() {
                             <div key={`${y}-${m_month}`}
                               title={`${MOFULL[mi]} ${y}${titleParts.length > 0 ? ": " + titleParts.join(", ") : ""}`}
                               style={{ width:dashCW, height:16, margin:"3px 0", display:"flex", gap:0,
-                                borderRight:mi===11?"1px solid #f1f5f9":"none" }}>
+                                borderRight:mi===11?"1px solid #cbd5e1":"1px solid #f0f0f0" }}>
                               {fills.map((f, ci) => (
                                 <div key={ci} style={{ flex:1, borderRadius:3, background:f.color,
                                   margin:"0 0.5px",
@@ -1103,12 +1118,12 @@ function App() {
         {/* Fixed left columns */}
         <div style={{ flexShrink:0, borderRight:"2px solid #e2e8f0", background:"#ffffff", zIndex:5 }}>
           {/* Header row */}
-          <div style={{ display:"flex", height:isWide?34:28, alignItems:"flex-end", borderBottom:"1px solid #e2e8f0" }}>
-            <div style={{ width:isWide?220:140, padding:"2px 6px", fontSize:isWide?10:8, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:0.5 }}>Activity</div>
-            <div style={{ width:isWide?80:60, padding:"2px 4px", fontSize:isWide?10:8, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", textAlign:"center" }}>Lead</div>
-            <div style={{ width:isWide?75:55, padding:"2px 4px", fontSize:isWide?10:8, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", textAlign:"center" }}>Co-resp</div>
-            <div style={{ width:isWide?40:32, padding:"2px 2px", fontSize:isWide?10:8, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", textAlign:"center" }}>%</div>
-            <div style={{ width:isWide?65:52, padding:"2px 2px", fontSize:isWide?10:8, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", textAlign:"center" }}>Exp.</div>
+          <div style={{ display:"flex", height:isWide?34:28, alignItems:"flex-end", borderBottom:"1px solid #cbd5e1" }}>
+            <div style={{ width:Math.round(zoom*1.4), padding:"2px 6px", fontSize:isWide?10:8, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:0.5 }}>Activity</div>
+            <div style={{ width:Math.round(zoom*0.6), padding:"2px 4px", fontSize:isWide?10:8, fontWeight:700, color:"#64748b", textTransform:"uppercase", textAlign:"center" }}>Lead</div>
+            <div style={{ width:Math.round(zoom*0.55), padding:"2px 4px", fontSize:isWide?10:8, fontWeight:700, color:"#64748b", textTransform:"uppercase", textAlign:"center" }}>Co-resp</div>
+            <div style={{ width:Math.round(zoom*0.32), padding:"2px 2px", fontSize:isWide?10:8, fontWeight:700, color:"#64748b", textTransform:"uppercase", textAlign:"center" }}>%</div>
+            <div style={{ width:Math.round(zoom*0.52), padding:"2px 2px", fontSize:isWide?10:8, fontWeight:700, color:"#64748b", textTransform:"uppercase", textAlign:"center" }}>Exp.</div>
           </div>
           {/* Phase + activity rows */}
           {ms.phases.map((phase, pi) => {
@@ -1141,35 +1156,35 @@ function App() {
                       <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #f1f5f9",
                         background:isExp?"#f1f5f9":"transparent", cursor:"pointer" }}
                         onClick={() => setExpanded(isExp ? null : act.id)}>
-                        <div style={{ width:isWide?220:140, padding:"0 6px", fontSize:isWide?12:10, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                        <div style={{ width:Math.round(zoom*1.4), padding:"0 6px", fontSize:Math.max(8,Math.round(zoom*0.1)), whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
                           color:act.p===100?"#94a3b8":"#334155", textDecoration:act.p===100?"line-through":"none", opacity:act.p===100?0.6:1 }}
                           title={act.n}>{act.n}</div>
-                        <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"lead"})}} style={{ width:isWide?80:60, padding:"0 4px", fontSize:isWide?10:9, color:"#94a3b8", textAlign:"center", cursor:"text" }}>
+                        <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"lead"})}} style={{ width:Math.round(zoom*0.6), padding:"0 4px", fontSize:Math.max(7,Math.round(zoom*0.09)), color:"#94a3b8", textAlign:"center", cursor:"text" }}>
                           {editing && editField.field==="lead" ?
                             <input className="edit-input" autoFocus defaultValue={act.lead}
                               onBlur={e=>{updateAct(act.id,{lead:e.target.value});setEditField(null)}}
                               onKeyDown={e=>{if(e.key==="Enter"){updateAct(act.id,{lead:e.target.value});setEditField(null)}}} />
                             : act.lead}
                         </div>
-                        <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"co"})}} style={{ width:isWide?75:55, padding:"0 4px", fontSize:isWide?10:9, color:"#94a3b8", textAlign:"center", cursor:"text" }}>
+                        <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"co"})}} style={{ width:Math.round(zoom*0.55), padding:"0 4px", fontSize:Math.max(7,Math.round(zoom*0.09)), color:"#94a3b8", textAlign:"center", cursor:"text" }}>
                           {editing && editField.field==="co" ?
                             <input className="edit-input" autoFocus defaultValue={act.co}
                               onBlur={e=>{updateAct(act.id,{co:e.target.value});setEditField(null)}}
                               onKeyDown={e=>{if(e.key==="Enter"){updateAct(act.id,{co:e.target.value});setEditField(null)}}} />
                             : act.co || "—"}
                         </div>
-                        <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"p"})}} style={{ width:isWide?40:32, padding:"0 2px", fontSize:isWide?11:9, fontWeight:600, textAlign:"center", cursor:"text",
+                        <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"p"})}} style={{ width:Math.round(zoom*0.32), padding:"0 2px", fontSize:Math.max(7,Math.round(zoom*0.09)), fontWeight:600, textAlign:"center", cursor:"text",
                           fontFamily:"'JetBrains Mono',monospace", color:act.p===100?c.bar:act.p>0?"#334155":"#94a3b8" }}>
                           {editing && editField.field==="p" ?
-                            <input className="edit-input" type="number" min={0} max={100} autoFocus defaultValue={act.p} style={{width:isWide?38:30,textAlign:"center"}}
+                            <input className="edit-input" type="number" min={0} max={100} autoFocus defaultValue={act.p} style={{width:Math.round(zoom*0.3),textAlign:"center"}}
                               onBlur={e=>{updateAct(act.id,{p:Math.max(0,Math.min(100,parseInt(e.target.value)||0))});setEditField(null)}}
                               onKeyDown={e=>{if(e.key==="Enter"){updateAct(act.id,{p:Math.max(0,Math.min(100,parseInt(e.target.value)||0))});setEditField(null)}}} />
                             : act.p}
                         </div>
-                        <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"exp"})}} style={{ width:isWide?65:52, padding:"0 2px", fontSize:isWide?10:8, color:"#94a3b8", textAlign:"center", cursor:"text",
+                        <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"exp"})}} style={{ width:Math.round(zoom*0.52), padding:"0 2px", fontSize:Math.max(6,Math.round(zoom*0.08)), color:"#94a3b8", textAlign:"center", cursor:"text",
                           fontFamily:"'JetBrains Mono',monospace" }}>
                           {editing && editField.field==="exp" ?
-                            <input className="edit-input" autoFocus defaultValue={act.exp} style={{width:isWide?62:50,fontSize:isWide?10:8}}
+                            <input className="edit-input" autoFocus defaultValue={act.exp} style={{width:Math.round(zoom*0.5),fontSize:Math.max(6,Math.round(zoom*0.08))}}
                               onBlur={e=>{updateAct(act.id,{exp:e.target.value});setEditField(null)}}
                               onKeyDown={e=>{if(e.key==="Enter"){updateAct(act.id,{exp:e.target.value});setEditField(null)}}} />
                             : act.exp || "—"}
@@ -1211,10 +1226,10 @@ function App() {
             </div>
             <div style={{ display:"flex", height:isWide?16:14, borderBottom:"1px solid #e2e8f0" }}>
               {years.map(y => Array.from({length:12}, (_,mi) => (
-                <div key={`${y}-${mi}`} style={{ width:CW, textAlign:"center", fontSize:7, fontWeight:500,
-                  color: (y===curY && mi+1===curM) ? "#dc2626" : "#94a3b8",
-                  lineHeight:"14px", background: (y===curY && mi+1===curM) ? "#fef2f2" : "transparent",
-                  borderRight:mi===11?"1px solid #e2e8f0":"none" }}>{MO[mi]}</div>
+                <div key={`${y}-${mi}`} style={{ width:CW, textAlign:"center", fontSize:Math.max(6, Math.round(zoom*0.07)), fontWeight:500,
+                  color: (y===curY && mi+1===curM) ? "#dc2626" : "#64748b",
+                  lineHeight:isWide?"16px":"14px", background: (y===curY && mi+1===curM) ? "#fef2f2" : "transparent",
+                  borderRight:mi===11?"1px solid #cbd5e1":"1px solid #f0f0f0" }}>{MO[mi]}</div>
               )))}
               {/* Today marker */}
               <div style={{ position:"absolute", left:((curY-ms.ys)*12+(curM-1))*CW + CW/2, top:0, bottom:0, width:2, background:"#dc2626", opacity:0.4, zIndex:10, pointerEvents:"none" }} />
@@ -1232,7 +1247,7 @@ function App() {
                     const isExp = expanded === act.id;
                     return (
                       <div key={act.id}>
-                        <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #f1f5f9",
+                        <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #e8e8e8",
                           background:isExp?"#f1f5f9":"transparent" }}>
                           {years.map(y =>
                             Array.from({length:12}, (_,mi) => {
@@ -1243,11 +1258,12 @@ function App() {
                                 <div key={`${y}-${m}`} className="gcell"
                                   onClick={(e) => { e.stopPropagation(); toggleMonth(act.id, y, m); }}
                                   title={`${MOFULL[mi]} ${y}`}
-                                  style={{ width:CW, height:RH-8, margin:"4px 0",
-                                    borderRight: mi===11 ? "1px solid #e2e8f0" : "none",
+                                  style={{ width:CW, height:RH-6, margin:"3px 0",
+                                    borderRight: mi===11 ? "1px solid #cbd5e1" : "1px solid #f0f0f0",
                                     position:"relative",
+                                    background: (y===curY && m===curM) ? "#fef2f2" : "transparent",
                                   }}>
-                                  {filled && <div style={{ position:"absolute", inset:0, margin:"0 0.5px",
+                                  {filled && <div style={{ position:"absolute", inset:1, margin:"0 0px",
                                     borderRadius:2,
                                     background:c.bar,
                                     boxShadow:`0 1px 2px ${c.bar}40, inset 0 1px 0 rgba(255,255,255,0.25)`,
