@@ -8,6 +8,19 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyCZqyDJYH_8jFZQBrj5o1qVeM8Fo3YyDgk",
+      authDomain: "gg-publication-timelines.firebaseapp.com",
+      databaseURL: "https://gg-publication-timelines-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "gg-publication-timelines",
+      storageBucket: "gg-publication-timelines.firebasestorage.app",
+      messagingSenderId: "229686709579",
+      appId: "1:229686709579:web:fc1e4ee959079687ebacce"
+    });
+  </script>
   <style>
     html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
     #root { height: 100%; overflow-y: auto; overflow-x: hidden; }
@@ -204,10 +217,18 @@ const RH_EXPANDED = 30;
 
 const FIREBASE_URL = "https://gg-publication-timelines-default-rtdb.europe-west1.firebasedatabase.app";
 
-// ── Firebase helpers ──
+// ── Firebase helpers (authenticated) ──
+async function getAuthToken() {
+  const user = firebase.auth().currentUser;
+  if (!user) return null;
+  return await user.getIdToken();
+}
+
 async function fbSave(path, data) {
   try {
-    await fetch(FIREBASE_URL + "/" + path + ".json", {
+    const token = await getAuthToken();
+    if (!token) return;
+    await fetch(FIREBASE_URL + "/" + path + ".json?auth=" + token, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -217,13 +238,15 @@ async function fbSave(path, data) {
 
 async function fbGet(path) {
   try {
-    const resp = await fetch(FIREBASE_URL + "/" + path + ".json");
+    const token = await getAuthToken();
+    if (!token) return null;
+    const resp = await fetch(FIREBASE_URL + "/" + path + ".json?auth=" + token);
     if (resp.ok) return await resp.json();
   } catch(e) { console.warn("Firebase load failed:", e); }
   return null;
 }
 
-function App() {
+function App({ user }) {
   const [tab, setTab] = useState("angkor");
   const [data, setData] = useState(() => JSON.parse(JSON.stringify(INIT)));
   const [fbConnected, setFbConnected] = useState(false);
@@ -522,7 +545,8 @@ function App() {
             from: key === "p" ? oldVal + "%" : (oldVal || "—"),
             to: key === "p" ? val + "%" : (val || "—"),
             time: new Date().toISOString(),
-            source: source
+            source: source,
+            user: user?.email || "unknown"
           });
         }
       });
@@ -638,6 +662,12 @@ function App() {
             <div style={{ width:6, height:6, borderRadius:"50%", background:fbConnected?"#22c55e":"#f59e0b", boxShadow:fbConnected?"0 0 4px rgba(34,197,94,0.4)":"none" }} />
             <span style={{ fontSize:8, color:fbConnected?"#22c55e":"#f59e0b" }}>{fbConnected?"Live":"..."}</span>
           </div>
+          <span style={{ fontSize:8, color:"#94a3b8", maxWidth:80, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}
+            title={user?.email}>{user?.email?.split("@")[0]}</span>
+          <button onClick={() => firebase.auth().signOut()}
+            style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:4, padding:"2px 6px",
+              fontSize:8, color:"#94a3b8", cursor:"pointer", fontFamily:"inherit" }}
+            title="Sign out">↪</button>
           <span style={{ color:"#0d9488", fontWeight:700 }}>{avg}%</span>
           <span>{done}/{total} done</span>
           <button onClick={() => {
@@ -1098,6 +1128,9 @@ function App() {
                                   <span style={{ margin:"0 4px", color:"#94a3b8" }}>→</span>
                                   <span style={{ fontWeight:600, color:"#0d9488" }}>{entry.to}</span>
                                 </div>
+                                {entry.user && (
+                                  <div style={{ fontSize:8, color:"#94a3b8", marginTop:2 }}>by {entry.user.split("@")[0]}</div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1526,8 +1559,90 @@ function App() {
   );
 }
 
+// ── Login Screen ──
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      await firebase.auth().signInWithEmailAndPassword(email, password);
+    } catch(err) {
+      setError(err.code === "auth/user-not-found" ? "No account found with this email" :
+               err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" ? "Incorrect password" :
+               err.code === "auth/invalid-email" ? "Invalid email address" :
+               "Login failed: " + err.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f8fafc", display:"flex", alignItems:"center", justifyContent:"center",
+      fontFamily:"'Söhne','DM Sans',-apple-system,sans-serif" }}>
+      <div style={{ width:320, padding:32, background:"#ffffff", borderRadius:16, border:"1px solid #e2e8f0",
+        boxShadow:"0 8px 30px rgba(0,0,0,0.08)" }}>
+        <div style={{ textAlign:"center", marginBottom:24 }}>
+          <img src="https://n-delgado-c.github.io/publication-timeline/Ku-ucph-logo-svg.svg" alt="UCPH"
+            style={{ width:48, height:48, marginBottom:12 }} />
+          <div style={{ fontSize:16, fontWeight:700, color:"#0f172a" }}>GeoGenetics Timelines</div>
+          <div style={{ fontSize:11, color:"#94a3b8", marginTop:4 }}>Sign in with your team account</div>
+        </div>
+        {error && <div style={{ padding:"8px 12px", background:"#fef2f2", border:"1px solid #fca5a5",
+          borderRadius:8, fontSize:11, color:"#dc2626", marginBottom:12 }}>{error}</div>}
+        <div style={{ marginBottom:12 }}>
+          <label style={{ fontSize:9, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:0.5 }}>Email</label>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+            placeholder="name@ku.dk"
+            style={{ width:"100%", padding:"10px 12px", marginTop:4, border:"1px solid #e2e8f0", borderRadius:8,
+              fontSize:13, fontFamily:"inherit", background:"#f8fafc", boxSizing:"border-box" }} />
+        </div>
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontSize:9, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:0.5 }}>Password</label>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+            placeholder="Team password"
+            style={{ width:"100%", padding:"10px 12px", marginTop:4, border:"1px solid #e2e8f0", borderRadius:8,
+              fontSize:13, fontFamily:"inherit", background:"#f8fafc", boxSizing:"border-box" }} />
+        </div>
+        <button onClick={handleLogin} disabled={loading || !email || !password}
+          style={{ width:"100%", padding:12, fontSize:13, fontWeight:700,
+            background:loading?"#94a3b8":"linear-gradient(135deg,#0d9488,#2563eb)",
+            color:"white", border:"none", borderRadius:8, cursor:loading?"wait":"pointer",
+            fontFamily:"inherit" }}>
+          {loading ? "Signing in..." : "Sign In"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Auth Wrapper ──
+function AuthWrapper() {
+  const [user, setUser] = useState(undefined); // undefined=loading, null=not logged in, object=logged in
+
+  useEffect(() => {
+    const unsub = firebase.auth().onAuthStateChanged(u => setUser(u));
+    return () => unsub();
+  }, []);
+
+  if (user === undefined) {
+    return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+      fontFamily:"'Söhne','DM Sans',-apple-system,sans-serif", color:"#94a3b8" }}>Loading...</div>;
+  }
+  if (!user) {
+    return <LoginScreen />;
+  }
+  return <App user={user} />;
+}
+
     function init() {
-      ReactDOM.render(React.createElement(App), document.getElementById('root'));
+      ReactDOM.render(React.createElement(AuthWrapper), document.getElementById('root'));
     }
     try {
       if (typeof Office !== "undefined" && Office.onReady) {
