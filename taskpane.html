@@ -247,7 +247,7 @@ async function fbGet(path) {
 }
 
 function App({ user }) {
-  const [tab, setTab] = useState("angkor");
+  const [tab, setTab] = useState("__all");
   const [data, setData] = useState(() => JSON.parse(JSON.stringify(INIT)));
   const [fbConnected, setFbConnected] = useState(false);
   const [lastSync, setLastSync] = useState(null);
@@ -1187,11 +1187,11 @@ function App({ user }) {
                   return (
                     <div key={act.id}>
                       <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #f1f5f9",
-                        background:isExp?"#f1f5f9":"transparent", cursor:"pointer" }}
+                        background:act.p===100?c.bg:isExp?"#f1f5f9":"transparent", cursor:"pointer" }}
                         onClick={() => setExpanded(isExp ? null : act.id)}>
                         <div style={{ width:Math.round(zoom*1.4), padding:"0 6px", fontSize:Math.max(8,Math.round(zoom*0.1)), whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
-                          color:act.p===100?"#94a3b8":"#334155", textDecoration:act.p===100?"line-through":"none", opacity:act.p===100?0.6:1 }}
-                          title={act.n}>{act.n}</div>
+                          color:act.p===100?c.accent:"#334155" }}
+                          title={act.n}>{act.p===100 ? "✓ " : ""}{act.n}</div>
                         <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"lead"})}} style={{ width:Math.round(zoom*0.6), padding:"0 4px", fontSize:Math.max(7,Math.round(zoom*0.09)), color:"#94a3b8", textAlign:"center", cursor:"text" }}>
                           {editing && editField.field==="lead" ?
                             <input className="edit-input" autoFocus defaultValue={act.lead}
