@@ -1203,10 +1203,28 @@ function App({ user }) {
                       }} />
                   ) : (
                     <span onDoubleClick={() => setEditingPhaseName({msId:ms.id, oldName:phase.name})}
-                      style={{ fontSize:8, fontWeight:700, color:c.accent, textTransform:"uppercase", letterSpacing:1, cursor:"text" }}
+                      style={{ fontSize:8, fontWeight:700, color:c.accent, textTransform:"uppercase", letterSpacing:1, cursor:"text", flex:1 }}
                       title="Double-click to rename">{phase.name}</span>
                   )}
+                  <button onClick={e => { e.stopPropagation(); setAddingActivity({msId:ms.id, phaseName:phase.name}); }}
+                    style={{ background:"none", border:"none", color:c.bar, cursor:"pointer", fontSize:12, fontWeight:700,
+                      padding:"0 2px", lineHeight:1, fontFamily:"inherit", opacity:0.5, flexShrink:0 }}
+                    onMouseEnter={e => e.currentTarget.style.opacity="1"}
+                    onMouseLeave={e => e.currentTarget.style.opacity="0.5"}
+                    title={`Add activity to ${phase.name}`}>+</button>
                 </div>
+                {/* Inline add activity input */}
+                {addingActivity?.msId === ms.id && addingActivity?.phaseName === phase.name && (
+                  <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #f1f5f9", background:c.bg, padding:"0 6px" }}>
+                    <input className="edit-input" autoFocus placeholder="New activity name..."
+                      style={{ width:Math.round(zoom*1.4)-12, fontSize:Math.max(8,Math.round(zoom*0.1)) }}
+                      onBlur={e => { if(e.target.value.trim()) addActivityToPhase(ms.id, phase.name, e.target.value); else setAddingActivity(null); }}
+                      onKeyDown={e => {
+                        if(e.key==="Enter" && e.target.value.trim()) addActivityToPhase(ms.id, phase.name, e.target.value);
+                        if(e.key==="Escape") setAddingActivity(null);
+                      }} />
+                  </div>
+                )}
                 {/* Activities */}
                 {phase.acts.map(act => {
                   const isExp = expanded === act.id;
@@ -1216,9 +1234,21 @@ function App({ user }) {
                       <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #f1f5f9",
                         background:act.p===100?c.bg:isExp?"#f1f5f9":"transparent", cursor:"pointer" }}
                         onClick={() => setExpanded(isExp ? null : act.id)}>
-                        <div style={{ width:Math.round(zoom*1.4), padding:"0 6px", fontSize:Math.max(8,Math.round(zoom*0.1)), whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
-                          color:act.p===100?c.accent:"#334155" }}
-                          title={act.n}>{act.p===100 ? "✓ " : ""}{act.n}</div>
+                        <div onDoubleClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"n"})}}
+                          style={{ width:Math.round(zoom*1.4), padding:"0 6px", fontSize:Math.max(8,Math.round(zoom*0.1)), whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                          color:act.p===100?c.accent:"#334155", cursor:"text" }}
+                          title={act.n + " (double-click to rename)"}>
+                          {editing && editField.field==="n" ? (
+                            <input className="edit-input" autoFocus defaultValue={act.n}
+                              style={{ width:"100%", fontSize:Math.max(8,Math.round(zoom*0.1)) }}
+                              onClick={e=>e.stopPropagation()}
+                              onBlur={e=>{updateAct(act.id,{n:e.target.value});setEditField(null)}}
+                              onKeyDown={e=>{if(e.key==="Enter"){updateAct(act.id,{n:e.target.value});setEditField(null)}
+                                if(e.key==="Escape") setEditField(null);}} />
+                          ) : (
+                            <span>{act.p===100 ? "✓ " : ""}{act.n}</span>
+                          )}
+                        </div>
                         <div onClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"lead"})}} style={{ width:Math.round(zoom*0.6), padding:"0 4px", fontSize:Math.max(7,Math.round(zoom*0.09)), color:"#94a3b8", textAlign:"center", cursor:"text" }}>
                           {editing && editField.field==="lead" ?
                             <input className="edit-input" autoFocus defaultValue={act.lead}
@@ -1268,23 +1298,6 @@ function App({ user }) {
                     </div>
                   );
                 })}
-                {/* Add activity row */}
-                {addingActivity?.msId === ms.id && addingActivity?.phaseName === phase.name ? (
-                  <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #f1f5f9", background:"#f8fafc", padding:"0 6px" }}>
-                    <input className="edit-input" autoFocus placeholder="New activity name..."
-                      style={{ width:Math.round(zoom*1.4)-12, fontSize:Math.max(8,Math.round(zoom*0.1)) }}
-                      onBlur={e => { if(e.target.value.trim()) addActivityToPhase(ms.id, phase.name, e.target.value); else setAddingActivity(null); }}
-                      onKeyDown={e => {
-                        if(e.key==="Enter" && e.target.value.trim()) addActivityToPhase(ms.id, phase.name, e.target.value);
-                        if(e.key==="Escape") setAddingActivity(null);
-                      }} />
-                  </div>
-                ) : (
-                  <div style={{ display:"flex", height:RH-4, alignItems:"center", borderBottom:"1px solid #f1f5f9", padding:"0 6px", cursor:"pointer" }}
-                    onClick={() => setAddingActivity({msId:ms.id, phaseName:phase.name})}>
-                    <span style={{ fontSize:Math.max(7,Math.round(zoom*0.08)), color:c.bar, fontWeight:600, opacity:0.5 }}>+ Add activity</span>
-                  </div>
-                )}
               </div>
             );
           })}
@@ -1356,8 +1369,10 @@ function App({ user }) {
                       </div>
                     );
                   })}
-                  {/* Add activity spacer (matches left column) */}
-                  <div style={{ height: addingActivity?.msId===ms?.id && addingActivity?.phaseName===phase.name ? RH : RH-4, borderBottom:"1px solid #f1f5f9" }} />
+                  {/* Add activity input row (matches left column when active) */}
+                  {addingActivity?.msId===ms?.id && addingActivity?.phaseName===phase.name && (
+                    <div style={{ height:RH, borderBottom:"1px solid #f1f5f9" }} />
+                  )}
                 </div>
               );
             })}
