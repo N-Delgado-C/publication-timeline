@@ -518,6 +518,33 @@ function App({ user }) {
     });
   }, [undoStack]);
 
+  const [addingActivity, setAddingActivity] = useState(null); // {msId, phaseName}
+
+  const addActivityToPhase = (msId, phaseName, activityName) => {
+    if (!activityName.trim()) return;
+    setUndoStack(prev => [...prev, JSON.parse(JSON.stringify(data))].slice(-30));
+    const prefix = data.find(m=>m.id===msId)?.short?.replace(/[^A-Z]/gi,"").substring(0,3).toUpperCase() || "XX";
+    const newId = `${prefix}-NEW${Date.now()}`;
+    setData(prev => {
+      const newData = prev.map(m => m.id !== msId ? m : {
+        ...m,
+        phases: m.phases.map(p => p.name !== phaseName ? p : {
+          ...p,
+          acts: [...p.acts, { id:newId, n:activityName.trim(), lead:"", co:"", p:0, exp:"", d:null, s:[curY, curM], e:[curY, curM+2>12?12:curM+2] }]
+        })
+      });
+      fbSave("manuscripts", newData);
+      return newData;
+    });
+    setChangelog(prev => {
+      const ms = data.find(m=>m.id===msId);
+      const newLog = [{ msId, msName:ms?.short||ms?.name||"", actName:activityName.trim(), field:"Activity added", from:"—", to:phaseName, time:new Date().toISOString(), user:user?.email||"unknown" }, ...prev].slice(0,200);
+      fbSave("changelog", newLog);
+      return newLog;
+    });
+    setAddingActivity(null);
+  };
+
   const findAct = useCallback((id) => {
     for (const m of data) for (const p of m.phases) for (const a of p.acts) if (a.id === id) return a;
     return null;
@@ -1241,6 +1268,23 @@ function App({ user }) {
                     </div>
                   );
                 })}
+                {/* Add activity row */}
+                {addingActivity?.msId === ms.id && addingActivity?.phaseName === phase.name ? (
+                  <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #f1f5f9", background:"#f8fafc", padding:"0 6px" }}>
+                    <input className="edit-input" autoFocus placeholder="New activity name..."
+                      style={{ width:Math.round(zoom*1.4)-12, fontSize:Math.max(8,Math.round(zoom*0.1)) }}
+                      onBlur={e => { if(e.target.value.trim()) addActivityToPhase(ms.id, phase.name, e.target.value); else setAddingActivity(null); }}
+                      onKeyDown={e => {
+                        if(e.key==="Enter" && e.target.value.trim()) addActivityToPhase(ms.id, phase.name, e.target.value);
+                        if(e.key==="Escape") setAddingActivity(null);
+                      }} />
+                  </div>
+                ) : (
+                  <div style={{ display:"flex", height:RH-4, alignItems:"center", borderBottom:"1px solid #f1f5f9", padding:"0 6px", cursor:"pointer" }}
+                    onClick={() => setAddingActivity({msId:ms.id, phaseName:phase.name})}>
+                    <span style={{ fontSize:Math.max(7,Math.round(zoom*0.08)), color:c.bar, fontWeight:600, opacity:0.5 }}>+ Add activity</span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1312,6 +1356,8 @@ function App({ user }) {
                       </div>
                     );
                   })}
+                  {/* Add activity spacer (matches left column) */}
+                  <div style={{ height: addingActivity?.msId===ms?.id && addingActivity?.phaseName===phase.name ? RH : RH-4, borderBottom:"1px solid #f1f5f9" }} />
                 </div>
               );
             })}
