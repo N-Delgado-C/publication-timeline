@@ -417,7 +417,7 @@ function App({ user }) {
     }));
   };
 
-  const moveActivity = (phaseName, idx, dir) => {
+  const moveFormActivity = (phaseName, idx, dir) => {
     setNewForm(prev => {
       const arr = [...(prev.selectedActs[phaseName] || [])];
       const newIdx = idx + dir;
@@ -1565,10 +1565,10 @@ function App({ user }) {
                                   background:"#f8fafc", marginBottom:2 }}>
                                 {/* Reorder arrows */}
                                 <div style={{ display:"flex", flexDirection:"column", gap:0, flexShrink:0 }}>
-                                  <button onClick={e => {e.stopPropagation(); moveActivity(phaseName, idx, -1)}}
+                                  <button onClick={e => {e.stopPropagation(); moveFormActivity(phaseName, idx, -1)}}
                                     style={{ background:"none", border:"none", color:idx===0?"#0f172a":"#94a3b8", cursor:idx===0?"default":"pointer",
                                       fontSize:8, padding:0, lineHeight:1, fontFamily:"inherit" }}>{"\u25B4"}</button>
-                                  <button onClick={e => {e.stopPropagation(); moveActivity(phaseName, idx, 1)}}
+                                  <button onClick={e => {e.stopPropagation(); moveFormActivity(phaseName, idx, 1)}}
                                     style={{ background:"none", border:"none", color:idx===selected.length-1?"#0f172a":"#94a3b8",
                                       cursor:idx===selected.length-1?"default":"pointer", fontSize:8, padding:0, lineHeight:1, fontFamily:"inherit" }}>{"\u25BE"}</button>
                                 </div>
