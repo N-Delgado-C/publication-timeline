@@ -545,6 +545,26 @@ function App({ user }) {
     setAddingActivity(null);
   };
 
+  const moveActivity = (msId, phaseName, actId, dir) => {
+    setUndoStack(prev => [...prev, JSON.parse(JSON.stringify(data))].slice(-30));
+    setData(prev => {
+      const newData = prev.map(m => {
+        if (m.id !== msId) return m;
+        return { ...m, phases: m.phases.map(p => {
+          if (p.name !== phaseName) return p;
+          const arr = [...p.acts];
+          const idx = arr.findIndex(a => a.id === actId);
+          const newIdx = idx + dir;
+          if (idx < 0 || newIdx < 0 || newIdx >= arr.length) return p;
+          [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+          return { ...p, acts: arr };
+        })};
+      });
+      fbSave("manuscripts", newData);
+      return newData;
+    });
+  };
+
   const findAct = useCallback((id) => {
     for (const m of data) for (const p of m.phases) for (const a of p.acts) if (a.id === id) return a;
     return null;
@@ -1226,7 +1246,7 @@ function App({ user }) {
                   </div>
                 )}
                 {/* Activities */}
-                {phase.acts.map(act => {
+                {phase.acts.map((act, actIdx) => {
                   const isExp = expanded === act.id;
                   const editing = editField?.id === act.id;
                   return (
@@ -1234,8 +1254,23 @@ function App({ user }) {
                       <div style={{ display:"flex", height:RH, alignItems:"center", borderBottom:"1px solid #f1f5f9",
                         background:act.p===100?c.bg:isExp?"#f1f5f9":"transparent", cursor:"pointer" }}
                         onClick={() => setExpanded(isExp ? null : act.id)}>
+                        <div style={{ display:"flex", flexDirection:"column", gap:0, flexShrink:0, width:12, padding:"0 1px" }}
+                          onClick={e => e.stopPropagation()}>
+                          <button onClick={() => moveActivity(ms.id, phase.name, act.id, -1)}
+                            style={{ background:"none", border:"none", color:actIdx===0?"transparent":"#cbd5e1", cursor:actIdx===0?"default":"pointer",
+                              fontSize:7, padding:0, lineHeight:1, fontFamily:"inherit" }}
+                            onMouseEnter={e => { if(actIdx>0) e.currentTarget.style.color="#64748b" }}
+                            onMouseLeave={e => e.currentTarget.style.color=actIdx===0?"transparent":"#cbd5e1"}
+                            disabled={actIdx===0}>{"\u25B4"}</button>
+                          <button onClick={() => moveActivity(ms.id, phase.name, act.id, 1)}
+                            style={{ background:"none", border:"none", color:actIdx===phase.acts.length-1?"transparent":"#cbd5e1",
+                              cursor:actIdx===phase.acts.length-1?"default":"pointer", fontSize:7, padding:0, lineHeight:1, fontFamily:"inherit" }}
+                            onMouseEnter={e => { if(actIdx<phase.acts.length-1) e.currentTarget.style.color="#64748b" }}
+                            onMouseLeave={e => e.currentTarget.style.color=actIdx===phase.acts.length-1?"transparent":"#cbd5e1"}
+                            disabled={actIdx===phase.acts.length-1}>{"\u25BE"}</button>
+                        </div>
                         <div onDoubleClick={e=>{e.stopPropagation();setEditField({id:act.id,field:"n"})}}
-                          style={{ width:Math.round(zoom*1.4), padding:"0 6px", fontSize:Math.max(8,Math.round(zoom*0.1)), whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                          style={{ width:Math.round(zoom*1.4)-12, padding:"0 4px", fontSize:Math.max(8,Math.round(zoom*0.1)), whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
                           color:act.p===100?c.accent:"#334155", cursor:"text" }}
                           title={act.n + " (double-click to rename)"}>
                           {editing && editField.field==="n" ? (
